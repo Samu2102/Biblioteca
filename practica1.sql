@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1:3307
--- Tiempo de generación: 23-02-2026 a las 17:15:55
+-- Tiempo de generación: 02-03-2026 a las 17:45:24
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -18,8 +18,99 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Base de datos: `practica1`
+-- Base de datos: `marzo2`
 --
+
+DELIMITER $$
+--
+-- Procedimientos
+--
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_actualizar_socio` (IN `p_numero` INT, IN `p_direccion` VARCHAR(255), IN `p_telefono` VARCHAR(10))   BEGIN
+    UPDATE tbl_socio
+    SET 
+        SOC_DIRECCION = p_direccion,
+        SOC_TELEFONO = p_telefono
+    WHERE SOC_NUMERO = p_numero;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_buscar_libro_nombre` (IN `p_nombre` VARCHAR(255))   BEGIN
+SELECT *
+FROM tbl_libro
+WHERE LIB_TITULO LIKE CONCAT('%', p_nombre, '%');
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_eliminar_libro` (IN `p_isbn` BIGINT)   BEGIN
+    DECLARE existe INT;
+
+    SELECT COUNT(*) INTO existe
+    FROM tbl_prestamo
+    WHERE LIB_COPIAISBN = p_isbn;
+    IF existe = 0 THEN
+        DELETE FROM tbl_libro
+        WHERE LIB_ISBN = p_isbn;
+    ELSE
+        SELECT 'No se puede eliminar, tiene prestamos' AS mensaje;
+    END IF;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_insertar_socio` (IN `p_numero` INT, IN `p_nombre` VARCHAR(45), IN `p_apellido` VARCHAR(45), IN `p_direccion` VARCHAR(255), IN `p_telefono` VARCHAR(10))   begin 
+insert into tbl_socio
+values (p_numero, p_nombre, p_apellido, p_direccion, p_telefono);
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_libros_en_prestamo` ()   BEGIN
+    SELECT
+    l.LIB_TITULO,
+    S.SOC_NOMBRE,
+    P.PRES_FECHAPRESTAMO,
+    P.PRES_FECHADEVOLUCION
+    FROM tbl_prestamo P 
+    INNER JOIN tbl_libro l
+    on p.LIB_COPIAISBN = l.LIB_ISBN
+    INNER JOIN tbl_socio s 
+    on p.SOC_COPIANUMERO = s.SOC_NUMERO;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_socios_con_prestamos` ()   BEGIN
+	SELECT
+    	S.SOC_NUMERO,
+        S.SOC_NOMBRE,
+        P.PRES_ID,
+        P.PRES_FECHAPRESTAMO,
+        P.PRES_FECHADEVOLUCION
+       FROM tbl_socio S
+       LEFT JOIN tbl_prestamo P
+       ON S.SOC_NUMERO = P.SOC_COPIANUMERO;
+END$$
+
+--
+-- Funciones
+--
+CREATE DEFINER=`root`@`localhost` FUNCTION `fn_dias_prestamo` (`p_isbn` BIGINT) RETURNS INT(11) DETERMINISTIC BEGIN
+    DECLARE dias INT;
+
+    SELECT DATEDIFF(
+        IFNULL(PRES_FECHADEVOLUCION, CURDATE()),
+        PRES_FECHAPRESTAMO
+    )
+    INTO dias
+    FROM tbl_prestamo
+    WHERE LIB_COPIAISBN = p_isbn
+    LIMIT 1;
+
+    RETURN dias;
+END$$
+
+CREATE DEFINER=`root`@`localhost` FUNCTION `fn_total_socios` () RETURNS INT(11) DETERMINISTIC BEGIN
+    DECLARE total INT;
+
+    SELECT COUNT(*) INTO total
+    FROM tbl_socio;
+
+    RETURN total;
+END$$
+
+DELIMITER ;
 
 -- --------------------------------------------------------
 
@@ -142,7 +233,8 @@ INSERT INTO `tbl_socio` (`SOC_NUMERO`, `SOC_NOMBRE`, `SOC_APELLIDO`, `SOC_DIRECC
 (9, 'Luis', 'Hernández', 'Avenida de la Montaña 890, Monte Verde, Granada', '6101234567'),
 (10, 'Andrea', 'García', 'Calle del Sol 432, La Colina, Zaragoza', '1112345678'),
 (11, 'Alejandro', 'Torres', 'Carrera del Oeste 765, Ciudad Nueva, Murcia', '4951234567'),
-(12, 'Sofia', 'Morales', 'Avenida del Mar 098, Costa Brava, Gijón', '5512345678');
+(12, 'Sofia', 'Morales', 'Avenida del Mar 098, Costa Brava, Gijón', '5512345678'),
+(13, 'Samuel', 'Tellez', 'Carrera 10 #45-20', '3005556677');
 
 -- --------------------------------------------------------
 
@@ -236,3 +328,4 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
